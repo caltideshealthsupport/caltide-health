@@ -33,7 +33,7 @@ app.post('/api/send-otp', async (req, res) => {
 
   try {
     const data = await resend.emails.send({
-      from: 'Caltide Health <onboarding@resend.dev>', // Replace with your verified domain in production
+      from: 'Caltide Health <no-reply@caltideshealth.online>',
       to: [email],
       subject: 'Your Caltide Health Login OTP',
       html: `
