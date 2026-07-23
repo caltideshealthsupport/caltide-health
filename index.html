@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <title>Caltides Health // Peptide Therapeutics</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ================= AUTH INTERFACE ================= -->
+    <div id="authContainer" class="portal-container">
+        <div class="portal-header">
+            <span class="status-indicator online"></span>
+            <span class="portal-title">CALTIDES HEALTH SECURE PORTAL</span>
+        </div>
+
+        <div class="portal-screen">
+            <h2>Authorized Access Only</h2>
+            <p class="subtitle">Please enter your registered email address to request verification credentials.</p>
+
+            <!-- Email Step -->
+            <form id="loginForm" class="auth-form">
+                <div class="input-group">
+                    <label for="emailAddress">Registered Email Address</label>
+                    <input type="email" id="emailAddress" placeholder="user@example.com" required autocomplete="off">
+                </div>
+                <button type="submit" class="btn-primary">Request Email OTP Token</button>
+            </form>
+
+            <!-- OTP Step -->
+            <form id="otpForm" class="auth-form hidden">
+                <div class="input-group">
+                    <label for="otpCode">One-Time Verification Code</label>
+                    <input type="text" id="otpCode" placeholder="••••••" maxlength="6" required autocomplete="off">
+                </div>
+                <button type="submit" class="btn-primary">Verify Identity</button>
+                <p class="resend-text">No token received? <span id="resendBtn">Resend Token</span></p>
+            </form>
+
+            <div id="consoleLog" class="console-log"></div>
+        </div>
+    </div>
+
+    <!-- ================= MAIN MARKETPLACE INTERFACE ================= -->
+    <section id="marketplace" class="hidden">
+        <header class="main-header">
+            <div>
+                <h1>Therapeutic Formulary</h1>
+                <p class="header-subtitle">Caltides Health Supply Registry</p>
+            </div>
+            <div class="dynamic-session-target"></div>
+        </header>
+
+        <div class="market-layout">
+            <div class="products-column">
+                
+                <!-- BPC-157 Card -->
+                <div class="product-card" data-id="bpc157" data-name="BPC-157 // 5MG" data-price="65.00">
+                    <div class="product-header">
+                        <span class="sku">REF: BPC-402</span>
+                        <span class="stock-status">In Stock (14 Available)</span>
+                    </div>
+                    <div class="product-card-layout">
+                        <div class="product-image-container">
+                            <img src="images/BPC-157.png" alt="BPC-157 // 5MG" class="product-image">
+                        </div>
+                        <div class="product-body">
+                            <h3>BPC-157 (Body Protection Compound)</h3>
+                            <p class="product-desc">Highly purified structural synthetic peptide sequence evaluated for rapid soft tissue acceleration and cellular matrix repair optimization models.</p>
+                            <div class="protocol-box">
+                                <strong>Protocol:</strong> Lyophilized powder. Reconstitute with 2.0mL bacteriostatic medium. Refrigerate at 2-8°C.
+                            </div>
+                            <div class="action-row">
+                                <span class="product-price">$65.00</span>
+                                <button class="btn-add-cart">Add to Order</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TB-500 Card -->
+                <div class="product-card" data-id="tb500" data-name="TB-500 // 10MG" data-price="89.00">
+                    <div class="product-header">
+                        <span class="sku">REF: TB-901</span>
+                        <span class="stock-status low">Limited Stock (3 Available)</span>
+                    </div>
+                    <div class="product-card-layout">
+                        <div class="product-image-container">
+                            <img src="images/TB-500.png" alt="TB-500 // 10MG" class="product-image">
+                        </div>
+                        <div class="product-body">
+                            <h3>TB-500 (Thymosin Beta-4 Synthetic)</h3>
+                            <p class="product-desc">Premium clinical grade sequence manufactured to evaluate endothelial cell migration, angiogenesis acceleration, and advanced collagen deposit regulation.</p>
+                            <div class="protocol-box">
+                                <strong>Protocol:</strong> Protect from direct ultraviolet exposure. Do not agitate structural fluid composition upon mixing.
+                            </div>
+                            <div class="action-row">
+                                <span class="product-price">$89.00</span>
+                                <button class="btn-add-cart">Add to Order</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="cart-column">
+                <div class="cart-box">
+                    <h3>Order Manifest</h3>
+                    <div id="cartItemsContainer" class="cart-items">
+                        <p class="empty-msg">No medical allocations selected.</p>
+                    </div>
+                    <div class="cart-footer">
+                        <div class="total-row">
+                            <span>Est. Total:</span>
+                            <span id="cartTotalValue">$0.00</span>
+                        </div>
+                        <button id="btnGoCheckout" class="btn-checkout" disabled>Proceed to Dispatch Summary</button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ================= CHECKOUT VIEW PANEL ================= -->
+    <section id="checkoutPage" class="hidden">
+        <header class="main-header">
+            <div>
+                <h1>Order Dispatch & Shipping Routing</h1>
+                <p class="header-subtitle">Caltides Health Logistics Portal</p>
+            </div>
+            <div class="dynamic-session-target"></div>
+        </header>
+
+        <div class="checkout-layout">
+            <div class="zelle-column">
+                <div class="zelle-box">
+                    <h3>Zelle Settlement Instructions</h3>
+                    <p class="zelle-desc">To secure your allocated items, route your transaction using the parameters below:</p>
+                    
+                    <div class="zelle-details">
+                        <div class="zelle-detail-row">
+                            <span>Zelle Recipient Phone:</span>
+                            <strong>+1 (555) 867-5309</strong>
+                        </div>
+                        <div class="zelle-detail-row">
+                            <span>Transfer Memo Obligation:</span>
+                            <span class="memo-text">Include your Full Name and Delivery Address in the transaction message.</span>
+                        </div>
+                    </div>
+
+                    <div class="protocol-box alert-box">
+                        <strong>Verification Note:</strong> Admin protocols will match your submitted Zelle Reference ID and incoming identity email (<span id="zelleUserEmailDisplay" class="highlight-text">Loading...</span>) against live banking logs before dispatching tracking details.
+                    </div>
+                </div>
+            </div>
+
+            <div class="shipping-column">
+                <div class="checkout-summary-table">
+                    <div class="summary-header">
+                        <span>Allocated Compound</span>
+                        <span class="txt-right">Total Cost</span>
+                    </div>
+                    <div id="checkoutItemsList"></div>
+                    <div class="summary-total-row">
+                        <span>Grand Total:</span>
+                        <span id="checkoutGrandTotal">$0.00</span>
+                    </div>
+                </div>
+
+                <form id="shippingForm" class="shipping-form">
+                    <div class="input-group">
+                        <label for="referralCode">Affiliate Referral Network Mapping</label>
+                        <input type="text" id="referralCode" readonly class="readonly-input">
+                        <p class="input-disclaimer">This referral compensation credit is automatically verified and awarded strictly once per novel client onboarding track.</p>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="shippingName">Full Recipient Legal Name</label>
+                        <input type="text" id="shippingName" required placeholder="John Doe">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="shippingAddress">Delivery Destination Address</label>
+                        <input type="text" id="shippingAddress" required placeholder="123 Pharma Way, Suite 400">
+                    </div>
+
+                    <div class="input-group highlight-border">
+                        <label for="zelleRefId">Zelle Transaction Reference ID</label>
+                        <input type="text" id="zelleRefId" required placeholder="Example: 9876543210" pattern="[a-zA-Z0-9]+" title="Please enter a valid alpha-numeric reference string.">
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="button" id="btnBackToMarket" class="btn-secondary">Modify Items</button>
+                        <button type="submit" class="btn-primary">Confirm & Dispatch Shipment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= ADMINISTRATIVE DISPATCH MANAGEMENT TERMINAL ================= -->
+    <section id="adminDashboard" class="hidden">
+        <header class="main-header">
+            <div>
+                <h1>Administrative Order Tracking Center</h1>
+                <p class="header-subtitle">Caltides Health Admin Interface</p>
+            </div>
+            <div class="dynamic-session-target"></div>
+        </header>
+
+        <div class="admin-layout">
+            <div class="table-container">
+                <table id="ordersTable">
+                    <thead>
+                        <tr>
+                            <th>Order Date/Time</th>
+                            <th>Tracking Number</th>
+                            <th>Customer Name</th>
+                            <th>Shipping Destination</th>
+                            <th>Referral Tracking</th>
+                            <th>Zelle Reference ID</th>
+                            <th>Fulfillment Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody"></tbody>
+                </table>
+            </div>
+
+            <div id="adminActionPanel" class="admin-action-sidebar panel-disabled">
+                <h3>Update Order Status</h3>
+                <p class="panel-desc">Select an active row from the data table matrix to authorize status modifications.</p>
+                <div class="action-vertical-stack">
+                    <button id="btnStatusPayment" class="btn-status payment">For Payment Confirmation</button>
+                    <button id="btnStatusShipment" class="btn-status progress">Shipment In-Progress</button>
+                    <button id="btnStatusDelivered" class="btn-status delivered">Delivered</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="app.js"></script>
+</body>
+</html>
