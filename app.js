@@ -7,12 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // AUTHORIZED WHITELIST MAP
     const CUSTOMER_WHITELIST = [
-        "caltideshealthsupport@gmail.com"
+        "jeremie.francis@gmail.com"
     ];
 
     const ADMIN_WHITELIST = [
-        "jeremie.francis@gmail.com",
-        "caltideshealth@gmail.com"
+        "caltideshealth@gmail.com",
+        "caltideshealthsupport@gmail.com"
     ];
 
     const REFERRAL_NETWORK_DIRECTORY = {
