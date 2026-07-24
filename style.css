@@ -355,8 +355,44 @@ label {
     width: 100%;
 }
 
-.table-filter-bar input {
+.table-filter-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
     width: 100%;
+}
+
+.role-filter-group {
+    display: flex;
+    gap: 6px;
+}
+
+.role-filter-btn {
+    background: #11151d;
+    border: 1px solid #1e293b;
+    color: #94a3b8;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.role-filter-btn:hover {
+    color: #fff;
+    border-color: #334155;
+}
+
+.role-filter-btn.active {
+    background: rgba(0, 188, 212, 0.1);
+    color: #00bcd4;
+    border-color: #00bcd4;
+    font-weight: 600;
+}
+
+.table-filter-bar input {
+    flex-grow: 1;
     background: #11151d;
     border: 1px solid #1e293b;
     padding: 10px 16px;

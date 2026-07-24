@@ -212,7 +212,7 @@
         <!-- ADMIN MODULE NAVIGATION TABS -->
         <nav class="admin-tabs">
             <button id="tabOrderTracking" class="tab-btn active">Administrative Order Tracking Center</button>
-            <button id="tabWhitelist" class="tab-btn">Whitelist Maintenance (tblwhitelist)</button>
+            <button id="tabWhitelist" class="tab-btn">Whitelist Maintenance</button>
         </nav>
 
         <!-- MODULE 1: ORDER TRACKING CENTER -->
@@ -247,12 +247,17 @@
             </div>
         </div>
 
-        <!-- MODULE 2: WHITELIST MAINTENANCE (tblwhitelist) -->
+        <!-- MODULE 2: WHITELIST MAINTENANCE -->
         <div id="moduleWhitelist" class="admin-module hidden">
             <div class="admin-layout">
                 <div class="table-column">
-                    <!-- Search Filter Bar -->
+                    <!-- Filter and Search Bar -->
                     <div class="table-filter-bar">
+                        <div class="role-filter-group">
+                            <button type="button" class="role-filter-btn active" data-role="ALL">All</button>
+                            <button type="button" class="role-filter-btn" data-role="CUSTOMER">Customer</button>
+                            <button type="button" class="role-filter-btn" data-role="ADMIN">Admin</button>
+                        </div>
                         <input type="text" id="whitelistSearchInput" placeholder="🔍 Search email, role, status, or referral code..." autocomplete="off">
                     </div>
 
@@ -287,7 +292,7 @@
 
                 <div class="admin-action-sidebar">
                     <h3 id="whitelistFormTitle">Add Whitelist Entry</h3>
-                    <p class="panel-desc">Manage system access authorization records for <code class="mono-text">tblwhitelist</code>.</p>
+                    <p class="panel-desc">Manage system access authorization records.</p>
                     
                     <form id="whitelistForm" class="auth-form" style="gap: 14px;">
                         <input type="hidden" id="whitelistId">

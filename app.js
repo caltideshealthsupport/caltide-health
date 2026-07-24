@@ -28,27 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     ];
 
-    // IN-MEMORY tblwhitelist REGISTRY DATA
-    let globalWhitelistRegistry = [
-        {
-            id: 1,
-            email: "admin@gmail.com",
-            role: "ADMIN",
-            status: "ACTIVE",
-            referredBy: "CALTIDES_DIRECT",
-            datecreated: "2026-07-20",
-            timecreated: "09:00 AM"
-        },
-        {
-            id: 2,
-            email: "customer@gmail.com",
-            role: "CUSTOMER",
-            status: "ACTIVE",
-            referredBy: "CALTIDES_DIRECT",
-            datecreated: "2026-07-20",
-            timecreated: "10:15 AM"
-        }
-    ];
+    // DYNAMIC DATABASE REGISTRY FOR tblwhitelist
+    let globalWhitelistRegistry = [];
 
     let shoppingCart = {};
     let selectedAdminOrderId = null;
@@ -118,9 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnWhitelistPrev = document.getElementById('btnWhitelistPrev');
     const btnWhitelistNext = document.getElementById('btnWhitelistNext');
 
-    // WHITELIST PAGINATION & SEARCH STATE VARIABLES
+    // WHITELIST PAGINATION, ROLE FILTER & SEARCH STATE VARIABLES
     const WHITELIST_PER_PAGE = 20;
     let whitelistCurrentPage = 1;
+    let whitelistRoleFilter = "ALL"; // 'ALL', 'CUSTOMER', or 'ADMIN'
     let whitelistSearchQuery = "";
     let searchDebounceTimer = null;
 
@@ -199,6 +181,27 @@ document.addEventListener('DOMContentLoaded', () => {
     checkDatabaseHealth();
     setInterval(checkDatabaseHealth, 30000);
 
+    // ================= DYNAMIC DATABASE WHITELIST FETCH =================
+    async function loadWhitelistFromDatabase() {
+        if (whitelistTableBody) {
+            whitelistTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#94a3b8; padding:20px;">Loading database records...</td></tr>`;
+        }
+
+        try {
+            const response = await fetch('/api/whitelist');
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            
+            const data = await response.json();
+            globalWhitelistRegistry = data;
+            renderWhitelistTable();
+        } catch (error) {
+            console.error("Database Whitelist Fetch Error:", error);
+            if (whitelistTableBody) {
+                whitelistTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#ef4444; padding:20px;">Unable to fetch records from database.</td></tr>`;
+            }
+        }
+    }
+
     // ================= SECURITY LIFECYCLE MANAGERS =================
     function startSessionCountdown() {
         clearInterval(sessionTimeoutInterval);
@@ -258,39 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         printStatus("Validating email against whitelist database...");
 
-        if (rawEmailInput === "customer@gmail.com" || rawEmailInput === "admin@gmail.com") {
-            const isSpecialAdmin = rawEmailInput === "admin@gmail.com";
-            const role = isSpecialAdmin ? 'ADMIN' : 'CUSTOMER';
-
-            printStatus(`Test ${role.toLowerCase()} login detected - bypassing OTP verification...`, true);
-
-            window.sessionStorage.setItem('authenticatedUserEmail', rawEmailInput);
-            window.sessionStorage.setItem('userRole', role);
-            window.sessionStorage.setItem('referredBy', 'CALTIDES_DIRECT');
-
-            loginForm.classList.add('hidden');
-            otpForm.classList.add('hidden');
-            authContainer.classList.add('hidden');
-            document.querySelectorAll('.app-session-bar').forEach(el => el.style.display = 'flex');
-
-            badgeContainersArray.forEach(badgeDiv => {
-                badgeDiv.textContent = `${role === 'ADMIN' ? 'Admin' : 'Client'} Session Secured User: ${rawEmailInput} [TEST MODE]`;
-            });
-
-            startSessionCountdown();
-
-            if (isSpecialAdmin) {
-                adminDashboard.classList.remove('hidden');
-                renderAdminOrdersTable();
-                renderWhitelistTable();
-            } else {
-                marketplace.classList.remove('hidden');
-            }
-
-            printStatus(`Test ${role.toLowerCase()} session activated - OTP bypassed successfully!`, true);
-            return;
-        }
-
         generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
         try {
@@ -348,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (isAdmin) {
                         adminDashboard.classList.remove('hidden');
                         renderAdminOrdersTable();
-                        renderWhitelistTable();
+                        loadWhitelistFromDatabase();
                     } else {
                         marketplace.classList.remove('hidden');
                     }
@@ -361,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resendBtn.addEventListener('click', async () => {
         const savedEmail = window.sessionStorage.getItem('authenticatedUserEmail');
-        if (savedEmail && !savedEmail.includes('@gmail.com')) {
+        if (savedEmail) {
             generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
             
             try {
@@ -379,8 +349,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 printStatus("Error sending OTP code.", false);
             }
-        } else {
-            printStatus("Resend not available for test accounts.", false);
         }
     });
 
@@ -574,6 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tabOrderTracking.classList.remove('active');
         moduleWhitelist.classList.remove('hidden');
         moduleOrderTracking.classList.add('hidden');
+        loadWhitelistFromDatabase();
     });
 
     // ================= MODULE 1: ADMIN ORDER DISPATCH CENTER =================
@@ -632,17 +601,21 @@ document.addEventListener('DOMContentLoaded', () => {
     btnStatusShipment.addEventListener('click', () => updateSelectedOrderStatus('Shipment In-Progress'));
     btnStatusDelivered.addEventListener('click', () => updateSelectedOrderStatus('Delivered'));
 
-    // ================= MODULE 2: WHITELIST MAINTENANCE (CRUD + PAGINATION + SEARCH) =================
+    // ================= MODULE 2: WHITELIST MAINTENANCE (CRUD + PAGINATION + SEARCH + ROLE FILTERS) =================
     function getFilteredWhitelistRecords() {
-        if (!whitelistSearchQuery) return globalWhitelistRegistry;
-        
-        return globalWhitelistRegistry.filter(record => 
-            record.email.toLowerCase().includes(whitelistSearchQuery) ||
-            record.role.toLowerCase().includes(whitelistSearchQuery) ||
-            record.status.toLowerCase().includes(whitelistSearchQuery) ||
-            record.referredBy.toLowerCase().includes(whitelistSearchQuery) ||
-            String(record.id).includes(whitelistSearchQuery)
-        );
+        return globalWhitelistRegistry.filter(record => {
+            const matchesRole = (whitelistRoleFilter === "ALL") || (record.role === whitelistRoleFilter);
+            
+            const matchesQuery = !whitelistSearchQuery || (
+                (record.email && record.email.toLowerCase().includes(whitelistSearchQuery)) ||
+                (record.role && record.role.toLowerCase().includes(whitelistSearchQuery)) ||
+                (record.status && record.status.toLowerCase().includes(whitelistSearchQuery)) ||
+                (record.referredBy && record.referredBy.toLowerCase().includes(whitelistSearchQuery)) ||
+                String(record.id).includes(whitelistSearchQuery)
+            );
+
+            return matchesRole && matchesQuery;
+        });
     }
 
     function renderWhitelistTable() {
@@ -672,9 +645,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="mono-text" style="color: #e2e8f0;">${item.email}</td>
                     <td><span class="status-pill ${roleClass}">${item.role}</span></td>
                     <td><span class="status-pill ${statusClass}">${item.status}</span></td>
-                    <td class="mono-text" style="color: #00bcd4;">${item.referredBy}</td>
-                    <td class="timestamp-text">${item.datecreated}</td>
-                    <td class="timestamp-text">${item.timecreated}</td>
+                    <td class="mono-text" style="color: #00bcd4;">${item.referredBy || 'N/A'}</td>
+                    <td class="timestamp-text">${item.datecreated || ''}</td>
+                    <td class="timestamp-text">${item.timecreated || ''}</td>
                     <td>
                         <button class="btn-action-edit" data-id="${item.id}">Edit</button>
                         <button class="btn-action-delete" data-id="${item.id}">Delete</button>
@@ -695,6 +668,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         attachWhitelistTableActions();
     }
+
+    // ROLE FILTER BUTTON LISTENERS
+    document.querySelectorAll('.role-filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.role-filter-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            whitelistRoleFilter = e.target.getAttribute('data-role');
+            whitelistCurrentPage = 1;
+            renderWhitelistTable();
+        });
+    });
 
     // SEARCH INPUT EVENT LISTENER WITH DEBOUNCE
     if (whitelistSearchInput) {
@@ -749,20 +733,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         whitelistTableBody.querySelectorAll('.btn-action-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 const id = parseInt(e.target.getAttribute('data-id'));
                 const record = globalWhitelistRegistry.find(r => r.id === id);
 
-                if (record && confirm(`Are you sure you want to delete "${record.email}" from tblwhitelist?`)) {
-                    globalWhitelistRegistry = globalWhitelistRegistry.filter(r => r.id !== id);
-                    renderWhitelistTable();
-                    resetWhitelistForm();
+                if (record && confirm(`Are you sure you want to delete "${record.email}"?`)) {
+                    try {
+                        await fetch(`/api/whitelist/${id}`, { method: 'DELETE' });
+                        globalWhitelistRegistry = globalWhitelistRegistry.filter(r => r.id !== id);
+                        renderWhitelistTable();
+                        resetWhitelistForm();
+                    } catch (err) {
+                        console.error("Failed to delete record:", err);
+                    }
                 }
             });
         });
     }
 
-    whitelistForm.addEventListener('submit', (e) => {
+    whitelistForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const id = whitelistIdInput.value ? parseInt(whitelistIdInput.value) : null;
@@ -773,34 +762,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const { datecreated, timecreated } = getSystemDateTimeFormatted();
 
-        if (id) {
-            // EDIT / UPDATE EXISTING RECORD
-            const index = globalWhitelistRegistry.findIndex(r => r.id === id);
-            if (index !== -1) {
-                globalWhitelistRegistry[index].email = email;
-                globalWhitelistRegistry[index].role = role;
-                globalWhitelistRegistry[index].status = status;
-                globalWhitelistRegistry[index].referredBy = referredBy;
+        const payload = { email, role, status, referredBy, datecreated, timecreated };
+
+        try {
+            if (id) {
+                // EDIT / UPDATE EXISTING RECORD
+                await fetch(`/api/whitelist/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const index = globalWhitelistRegistry.findIndex(r => r.id === id);
+                if (index !== -1) {
+                    globalWhitelistRegistry[index] = { ...globalWhitelistRegistry[index], ...payload };
+                }
+            } else {
+                // CREATE NEW RECORD
+                const response = await fetch('/api/whitelist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const createdRecord = await response.json();
+                globalWhitelistRegistry.push(createdRecord.id ? createdRecord : { id: Date.now(), ...payload });
             }
-        } else {
-            // CREATE NEW RECORD
-            const newId = globalWhitelistRegistry.length > 0 
-                ? Math.max(...globalWhitelistRegistry.map(r => r.id)) + 1 
-                : 1;
 
-            globalWhitelistRegistry.push({
-                id: newId,
-                email: email,
-                role: role,
-                status: status,
-                referredBy: referredBy,
-                datecreated: datecreated,
-                timecreated: timecreated
-            });
+            renderWhitelistTable();
+            resetWhitelistForm();
+        } catch (err) {
+            console.error("Failed to save whitelist record:", err);
         }
-
-        renderWhitelistTable();
-        resetWhitelistForm();
     });
 
     btnCancelWhitelist.addEventListener('click', resetWhitelistForm);
