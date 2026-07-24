@@ -159,6 +159,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return { datecreated, timecreated };
     }
 
+    // ================= HELPER: CHECK IF EMAIL OTP IS ENABLED IN tblmaintenance =================
+    async function checkIsEmailOTPEnabled() {
+        try {
+            const response = await fetch('/api/maintenance/isEmailOTPEnabled');
+            if (response.ok) {
+                const data = await response.json();
+                // Returns true if VALUE is YES, false if NO
+                return data.value ? (data.value.toUpperCase() === 'YES') : true;
+            }
+        } catch (err) {
+            console.warn("Could not reach maintenance setting, defaulting to OTP enabled.", err);
+        }
+        return true; // Default fallback
+    }
+
     // ================= LIVE DATABASE HEALTH CHECK =================
     async function checkDatabaseHealth() {
         try {
@@ -254,6 +269,29 @@ document.addEventListener('DOMContentLoaded', () => {
         authContainer.classList.remove('hidden');
     }
 
+    // HELPER: LAUNCH SESSION DIRECTLY AFTER AUTHORIZATION
+    function grantSessionAccess(email, role) {
+        const isAdmin = (role === 'ADMIN');
+
+        badgeContainersArray.forEach(badgeDiv => {
+            badgeDiv.textContent = isAdmin 
+                ? `Admin Session Secured User: ${email}`
+                : `Client Session Secured User: ${email}`;
+        });
+
+        authContainer.classList.add('hidden');
+        document.querySelectorAll('.app-session-bar').forEach(el => el.style.display = 'flex');
+        startSessionCountdown();
+
+        if (isAdmin) {
+            adminDashboard.classList.remove('hidden');
+            renderAdminOrdersTable();
+            loadWhitelistFromDatabase();
+        } else {
+            marketplace.classList.remove('hidden');
+        }
+    }
+
     // ================= SECURITY GATEWAY HANDLERS =================
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -264,24 +302,40 @@ document.addEventListener('DOMContentLoaded', () => {
         generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
         try {
+            // Check maintenance configuration status
+            const isOtpRequired = await checkIsEmailOTPEnabled();
+
             const response = await fetch('/api/send-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: rawEmailInput, otp: generatedOtp })
+                body: JSON.stringify({ 
+                    email: rawEmailInput, 
+                    otp: generatedOtp,
+                    isOtpRequired: isOtpRequired 
+                })
             });
 
             const result = await response.json();
 
             if (response.ok && result.success) {
+                const userRole = result.role || 'CUSTOMER';
                 window.sessionStorage.setItem('authenticatedUserEmail', rawEmailInput);
-                window.sessionStorage.setItem('userRole', result.role || 'CUSTOMER');
+                window.sessionStorage.setItem('userRole', userRole);
                 window.sessionStorage.setItem('referredBy', result.referredBy || 'CALTIDES_DIRECT');
 
-                printStatus(result.message, true);
-
-                loginForm.classList.add('hidden');
-                otpForm.classList.remove('hidden');
-                otpCodeInput.focus();
+                if (!isOtpRequired) {
+                    // Maintenance setting disabled OTP: Skip OTP step and log in directly
+                    printStatus("OTP bypassed (Maintenance Mode). Launching session...", true);
+                    setTimeout(() => {
+                        grantSessionAccess(rawEmailInput, userRole);
+                    }, 600);
+                } else {
+                    // Standard Flow: Require OTP verification
+                    printStatus(result.message, true);
+                    loginForm.classList.add('hidden');
+                    otpForm.classList.remove('hidden');
+                    otpCodeInput.focus();
+                }
             } else {
                 printStatus(result.message || 'Validation failed.', false);
             }
@@ -302,26 +356,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const activeEmail = window.sessionStorage.getItem('authenticatedUserEmail') || 'Active Identity';
                 const userRole = window.sessionStorage.getItem('userRole');
-                const isAdmin = (userRole === 'ADMIN');
-                
-                badgeContainersArray.forEach(badgeDiv => {
-                    badgeDiv.textContent = isAdmin 
-                        ? `Admin Session Secured User: ${activeEmail}`
-                        : `Client Session Secured User: ${activeEmail}`;
-                });
                 
                 setTimeout(() => {
-                    authContainer.classList.add('hidden');
-                    document.querySelectorAll('.app-session-bar').forEach(el => el.style.display = 'flex');
-                    startSessionCountdown();
-
-                    if (isAdmin) {
-                        adminDashboard.classList.remove('hidden');
-                        renderAdminOrdersTable();
-                        loadWhitelistFromDatabase();
-                    } else {
-                        marketplace.classList.remove('hidden');
-                    }
+                    grantSessionAccess(activeEmail, userRole);
                 }, 800);
             } else {
                 printStatus("Security validation failed: Invalid credentials token sequence.", false);
@@ -338,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/send-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: savedEmail, otp: generatedOtp })
+                    body: JSON.stringify({ email: savedEmail, otp: generatedOtp, isOtpRequired: true })
                 });
                 const result = await response.json();
                 if (response.ok && result.success) {
@@ -601,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnStatusShipment.addEventListener('click', () => updateSelectedOrderStatus('Shipment In-Progress'));
     btnStatusDelivered.addEventListener('click', () => updateSelectedOrderStatus('Delivered'));
 
-    // ================= MODULE 2: WHITELIST MAINTENANCE (CRUD + PAGINATION + SEARCH + ROLE FILTERS) =================
+    // ================= MODULE 2: WHITELIST MAINTENANCE =================
     function getFilteredWhitelistRecords() {
         return globalWhitelistRegistry.filter(record => {
             const matchesRole = (whitelistRoleFilter === "ALL") || (record.role === whitelistRoleFilter);
@@ -766,7 +803,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (id) {
-                // EDIT / UPDATE EXISTING RECORD
                 await fetch(`/api/whitelist/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -777,7 +813,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     globalWhitelistRegistry[index] = { ...globalWhitelistRegistry[index], ...payload };
                 }
             } else {
-                // CREATE NEW RECORD
                 const response = await fetch('/api/whitelist', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
