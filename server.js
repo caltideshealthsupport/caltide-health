@@ -1,3 +1,37 @@
+import express from 'express';
+import cors from 'cors';
+import { Resend } from 'resend';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import db from './db.js';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const port = process.env.PORT || 3001;
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(__dirname));
+
+// Endpoint: Check Database Connection Status
+app.get('/api/health', async (req, res) => {
+  try {
+    const connection = await db.getConnection();
+    connection.release();
+    return res.status(200).json({ status: 'online', database: 'connected' });
+  } catch (error) {
+    console.error('Database connection test failed:', error.message);
+    return res.status(500).json({ status: 'offline', database: 'disconnected' });
+  }
+});
+
 // Endpoint: Validate Whitelist & Send OTP
 app.post('/api/send-otp', async (req, res) => {
   const { email, otp } = req.body;
@@ -72,4 +106,8 @@ app.post('/api/send-otp', async (req, res) => {
       message: `Database error: ${dbError.message}`
     });
   }
+});
+
+app.listen(port, () => {
+  console.log(`Backend server running on port ${port}`);
 });
