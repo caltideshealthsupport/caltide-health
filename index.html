@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<!-- ================= AUTH INTERFACE ================= -->
+    <!-- ================= AUTH INTERFACE ================= -->
     <div id="authContainer" class="portal-container">
         <div class="portal-header">
             <span id="dbStatusDot" class="status-indicator offline"></span>
@@ -199,41 +199,130 @@
         </div>
     </section>
 
-    <!-- ================= ADMINISTRATIVE DISPATCH MANAGEMENT TERMINAL ================= -->
+    <!-- ================= ADMINISTRATIVE DISPATCH & MAINTENANCE TERMINAL ================= -->
     <section id="adminDashboard" class="hidden">
         <header class="main-header">
             <div>
-                <h1>Administrative Order Tracking Center</h1>
+                <h1>Administrative Control Center</h1>
                 <p class="header-subtitle">Caltides Health Admin Interface</p>
             </div>
             <div class="dynamic-session-target"></div>
         </header>
 
-        <div class="admin-layout">
-            <div class="table-container">
-                <table id="ordersTable">
-                    <thead>
-                        <tr>
-                            <th>Order Date/Time</th>
-                            <th>Tracking Number</th>
-                            <th>Customer Name</th>
-                            <th>Shipping Destination</th>
-                            <th>Referral Tracking</th>
-                            <th>Zelle Reference ID</th>
-                            <th>Fulfillment Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ordersTableBody"></tbody>
-                </table>
-            </div>
+        <!-- ADMIN MODULE NAVIGATION TABS -->
+        <nav class="admin-tabs">
+            <button id="tabOrderTracking" class="tab-btn active">Administrative Order Tracking Center</button>
+            <button id="tabWhitelist" class="tab-btn">Whitelist Maintenance (tblwhitelist)</button>
+        </nav>
 
-            <div id="adminActionPanel" class="admin-action-sidebar panel-disabled">
-                <h3>Update Order Status</h3>
-                <p class="panel-desc">Select an active row from the data table matrix to authorize status modifications.</p>
-                <div class="action-vertical-stack">
-                    <button id="btnStatusPayment" class="btn-status payment">For Payment Confirmation</button>
-                    <button id="btnStatusShipment" class="btn-status progress">Shipment In-Progress</button>
-                    <button id="btnStatusDelivered" class="btn-status delivered">Delivered</button>
+        <!-- MODULE 1: ORDER TRACKING CENTER -->
+        <div id="moduleOrderTracking" class="admin-module">
+            <div class="admin-layout">
+                <div class="table-container">
+                    <table id="ordersTable">
+                        <thead>
+                            <tr>
+                                <th>Order Date/Time</th>
+                                <th>Tracking Number</th>
+                                <th>Customer Name</th>
+                                <th>Shipping Destination</th>
+                                <th>Referral Tracking</th>
+                                <th>Zelle Reference ID</th>
+                                <th>Fulfillment Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div id="adminActionPanel" class="admin-action-sidebar panel-disabled">
+                    <h3>Update Order Status</h3>
+                    <p class="panel-desc">Select an active row from the data table matrix to authorize status modifications.</p>
+                    <div class="action-vertical-stack">
+                        <button id="btnStatusPayment" class="btn-status payment">For Payment Confirmation</button>
+                        <button id="btnStatusShipment" class="btn-status progress">Shipment In-Progress</button>
+                        <button id="btnStatusDelivered" class="btn-status delivered">Delivered</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODULE 2: WHITELIST MAINTENANCE (tblwhitelist) -->
+        <div id="moduleWhitelist" class="admin-module hidden">
+            <div class="admin-layout">
+                <div class="table-column">
+                    <!-- Search Filter Bar -->
+                    <div class="table-filter-bar">
+                        <input type="text" id="whitelistSearchInput" placeholder="🔍 Search email, role, status, or referral code..." autocomplete="off">
+                    </div>
+
+                    <div class="table-container">
+                        <table id="whitelistTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Email Address</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Referred By</th>
+                                    <th>Date Created</th>
+                                    <th>Time Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="whitelistTableBody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Navigation Bar -->
+                    <div class="pagination-bar">
+                        <span id="whitelistPaginationInfo" class="pagination-info">Showing 0 of 0 entries</span>
+                        <div class="pagination-controls">
+                            <button id="btnWhitelistPrev" class="btn-page" disabled>&laquo; Previous</button>
+                            <span id="whitelistPageDisplay" class="page-num">Page 1 of 1</span>
+                            <button id="btnWhitelistNext" class="btn-page" disabled>Next &raquo;</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-action-sidebar">
+                    <h3 id="whitelistFormTitle">Add Whitelist Entry</h3>
+                    <p class="panel-desc">Manage system access authorization records for <code class="mono-text">tblwhitelist</code>.</p>
+                    
+                    <form id="whitelistForm" class="auth-form" style="gap: 14px;">
+                        <input type="hidden" id="whitelistId">
+                        
+                        <div class="input-group">
+                            <label for="whitelistEmail">User Email Address</label>
+                            <input type="email" id="whitelistEmail" placeholder="client@domain.com" required>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="whitelistRole">Assigned Role</label>
+                            <select id="whitelistRole" class="styled-select">
+                                <option value="CUSTOMER">CUSTOMER</option>
+                                <option value="ADMIN">ADMIN</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="whitelistStatus">Authorization Status</label>
+                            <select id="whitelistStatus" class="styled-select">
+                                <option value="ACTIVE">ACTIVE</option>
+                                <option value="INACTIVE">INACTIVE</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="whitelistReferredBy">Referred By Code</label>
+                            <input type="text" id="whitelistReferredBy" placeholder="CALTIDES_DIRECT" value="CALTIDES_DIRECT">
+                        </div>
+
+                        <div class="action-vertical-stack" style="margin-top: 10px;">
+                            <button type="submit" id="btnSaveWhitelist" class="btn-primary" style="width: 100%;">Save Record</button>
+                            <button type="button" id="btnCancelWhitelist" class="btn-secondary hidden" style="width: 100%;">Cancel Edit</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

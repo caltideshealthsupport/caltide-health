@@ -28,9 +28,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     ];
 
+    // IN-MEMORY tblwhitelist REGISTRY DATA
+    let globalWhitelistRegistry = [
+        {
+            id: 1,
+            email: "admin@gmail.com",
+            role: "ADMIN",
+            status: "ACTIVE",
+            referredBy: "CALTIDES_DIRECT",
+            datecreated: "2026-07-20",
+            timecreated: "09:00 AM"
+        },
+        {
+            id: 2,
+            email: "customer@gmail.com",
+            role: "CUSTOMER",
+            status: "ACTIVE",
+            referredBy: "CALTIDES_DIRECT",
+            datecreated: "2026-07-20",
+            timecreated: "10:15 AM"
+        }
+    ];
+
     let shoppingCart = {};
     let selectedAdminOrderId = null;
-    let generatedOtp = null; // Generated OTP reference
+    let generatedOtp = null; 
     
     // SECURITY AUTO-LOGOUT CONFIGURATION
     let sessionTimeoutInterval = null;
@@ -66,11 +88,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const referralCodeField = document.getElementById('referralCode');
     const zelleRefIdInput = document.getElementById('zelleRefId');
 
+    // ADMIN CONTROLS & TABS
+    const tabOrderTracking = document.getElementById('tabOrderTracking');
+    const tabWhitelist = document.getElementById('tabWhitelist');
+    const moduleOrderTracking = document.getElementById('moduleOrderTracking');
+    const moduleWhitelist = document.getElementById('moduleWhitelist');
+
     const ordersTableBody = document.getElementById('ordersTableBody');
     const adminActionPanel = document.getElementById('adminActionPanel');
     const btnStatusPayment = document.getElementById('btnStatusPayment');
     const btnStatusShipment = document.getElementById('btnStatusShipment');
     const btnStatusDelivered = document.getElementById('btnStatusDelivered');
+
+    // WHITELIST FORM & PAGINATION SELECTORS
+    const whitelistTableBody = document.getElementById('whitelistTableBody');
+    const whitelistForm = document.getElementById('whitelistForm');
+    const whitelistFormTitle = document.getElementById('whitelistFormTitle');
+    const whitelistIdInput = document.getElementById('whitelistId');
+    const whitelistEmailInput = document.getElementById('whitelistEmail');
+    const whitelistRoleSelect = document.getElementById('whitelistRole');
+    const whitelistStatusSelect = document.getElementById('whitelistStatus');
+    const whitelistReferredByInput = document.getElementById('whitelistReferredBy');
+    const btnSaveWhitelist = document.getElementById('btnSaveWhitelist');
+    const btnCancelWhitelist = document.getElementById('btnCancelWhitelist');
+
+    const whitelistSearchInput = document.getElementById('whitelistSearchInput');
+    const whitelistPaginationInfo = document.getElementById('whitelistPaginationInfo');
+    const whitelistPageDisplay = document.getElementById('whitelistPageDisplay');
+    const btnWhitelistPrev = document.getElementById('btnWhitelistPrev');
+    const btnWhitelistNext = document.getElementById('btnWhitelistNext');
+
+    // WHITELIST PAGINATION & SEARCH STATE VARIABLES
+    const WHITELIST_PER_PAGE = 20;
+    let whitelistCurrentPage = 1;
+    let whitelistSearchQuery = "";
+    let searchDebounceTimer = null;
 
     const sessionTargets = document.querySelectorAll('.dynamic-session-target');
     const timerBadgesArray = [];
@@ -107,6 +159,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // HELPER: DATE & TIME FORMATTER (yyyy-MM-dd & 12-hour format)
+    function getSystemDateTimeFormatted() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const datecreated = `${year}-${month}-${day}`;
+
+        let hours = now.getHours();
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; 
+        const timecreated = `${hours}:${minutes} ${ampm}`;
+
+        return { datecreated, timecreated };
+    }
+
     // ================= LIVE DATABASE HEALTH CHECK =================
     async function checkDatabaseHealth() {
         try {
@@ -126,7 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Run health check on startup and every 30s
     checkDatabaseHealth();
     setInterval(checkDatabaseHealth, 30000);
 
@@ -189,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         printStatus("Validating email against whitelist database...");
 
-        // Handle special test accounts - bypass OTP verification
         if (rawEmailInput === "customer@gmail.com" || rawEmailInput === "admin@gmail.com") {
             const isSpecialAdmin = rawEmailInput === "admin@gmail.com";
             const role = isSpecialAdmin ? 'ADMIN' : 'CUSTOMER';
@@ -214,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isSpecialAdmin) {
                 adminDashboard.classList.remove('hidden');
                 renderAdminOrdersTable();
+                renderWhitelistTable();
             } else {
                 marketplace.classList.remove('hidden');
             }
@@ -222,7 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Standard User Flow: Generate OTP and validate with Backend & Aiven MySQL
         generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
         try {
@@ -237,7 +305,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok && result.success) {
                 window.sessionStorage.setItem('authenticatedUserEmail', rawEmailInput);
                 window.sessionStorage.setItem('userRole', result.role || 'CUSTOMER');
-                // Store database REFERRED_BY value in session (defaults to CALTIDES_DIRECT if null)
                 window.sessionStorage.setItem('referredBy', result.referredBy || 'CALTIDES_DIRECT');
 
                 printStatus(result.message, true);
@@ -246,7 +313,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 otpForm.classList.remove('hidden');
                 otpCodeInput.focus();
             } else {
-                // Displays backend response (e.g., Access Denied or Inactive status)
                 printStatus(result.message || 'Validation failed.', false);
             }
         } catch (err) {
@@ -282,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (isAdmin) {
                         adminDashboard.classList.remove('hidden');
                         renderAdminOrdersTable();
+                        renderWhitelistTable();
                     } else {
                         marketplace.classList.remove('hidden');
                     }
@@ -494,7 +561,22 @@ document.addEventListener('DOMContentLoaded', () => {
         window.scrollTo(0, 0);
     });
 
-    // ================= ADMIN DISPATCH CENTER =================
+    // ================= ADMIN TAB NAVIGATION =================
+    tabOrderTracking.addEventListener('click', () => {
+        tabOrderTracking.classList.add('active');
+        tabWhitelist.classList.remove('active');
+        moduleOrderTracking.classList.remove('hidden');
+        moduleWhitelist.classList.add('hidden');
+    });
+
+    tabWhitelist.addEventListener('click', () => {
+        tabWhitelist.classList.add('active');
+        tabOrderTracking.classList.remove('active');
+        moduleWhitelist.classList.remove('hidden');
+        moduleOrderTracking.classList.add('hidden');
+    });
+
+    // ================= MODULE 1: ADMIN ORDER DISPATCH CENTER =================
     function renderAdminOrdersTable() {
         ordersTableBody.innerHTML = '';
         selectedAdminOrderId = null;
@@ -549,4 +631,186 @@ document.addEventListener('DOMContentLoaded', () => {
     btnStatusPayment.addEventListener('click', () => updateSelectedOrderStatus('For Payment Confirmation'));
     btnStatusShipment.addEventListener('click', () => updateSelectedOrderStatus('Shipment In-Progress'));
     btnStatusDelivered.addEventListener('click', () => updateSelectedOrderStatus('Delivered'));
+
+    // ================= MODULE 2: WHITELIST MAINTENANCE (CRUD + PAGINATION + SEARCH) =================
+    function getFilteredWhitelistRecords() {
+        if (!whitelistSearchQuery) return globalWhitelistRegistry;
+        
+        return globalWhitelistRegistry.filter(record => 
+            record.email.toLowerCase().includes(whitelistSearchQuery) ||
+            record.role.toLowerCase().includes(whitelistSearchQuery) ||
+            record.status.toLowerCase().includes(whitelistSearchQuery) ||
+            record.referredBy.toLowerCase().includes(whitelistSearchQuery) ||
+            String(record.id).includes(whitelistSearchQuery)
+        );
+    }
+
+    function renderWhitelistTable() {
+        whitelistTableBody.innerHTML = '';
+
+        const filteredRecords = getFilteredWhitelistRecords();
+        const totalRecords = filteredRecords.length;
+        const totalPages = Math.ceil(totalRecords / WHITELIST_PER_PAGE) || 1;
+
+        if (whitelistCurrentPage > totalPages) whitelistCurrentPage = totalPages;
+        if (whitelistCurrentPage < 1) whitelistCurrentPage = 1;
+
+        const startIndex = (whitelistCurrentPage - 1) * WHITELIST_PER_PAGE;
+        const endIndex = startIndex + WHITELIST_PER_PAGE;
+        const pageRecords = filteredRecords.slice(startIndex, endIndex);
+
+        if (pageRecords.length === 0) {
+            whitelistTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#475569; padding:20px;">No matching records found.</td></tr>`;
+        } else {
+            pageRecords.forEach(item => {
+                const tr = document.createElement('tr');
+                const roleClass = item.role === 'ADMIN' ? 'pill-admin' : 'pill-customer';
+                const statusClass = item.status === 'ACTIVE' ? 'pill-active' : 'pill-inactive';
+
+                tr.innerHTML = `
+                    <td class="mono-text" style="color: #64748b;">${item.id}</td>
+                    <td class="mono-text" style="color: #e2e8f0;">${item.email}</td>
+                    <td><span class="status-pill ${roleClass}">${item.role}</span></td>
+                    <td><span class="status-pill ${statusClass}">${item.status}</span></td>
+                    <td class="mono-text" style="color: #00bcd4;">${item.referredBy}</td>
+                    <td class="timestamp-text">${item.datecreated}</td>
+                    <td class="timestamp-text">${item.timecreated}</td>
+                    <td>
+                        <button class="btn-action-edit" data-id="${item.id}">Edit</button>
+                        <button class="btn-action-delete" data-id="${item.id}">Delete</button>
+                    </td>
+                `;
+
+                whitelistTableBody.appendChild(tr);
+            });
+        }
+
+        const currentRangeStart = totalRecords === 0 ? 0 : startIndex + 1;
+        const currentRangeEnd = Math.min(endIndex, totalRecords);
+        whitelistPaginationInfo.textContent = `Showing ${currentRangeStart}-${currentRangeEnd} of ${totalRecords} entries`;
+        whitelistPageDisplay.textContent = `Page ${whitelistCurrentPage} of ${totalPages}`;
+
+        btnWhitelistPrev.disabled = (whitelistCurrentPage <= 1);
+        btnWhitelistNext.disabled = (whitelistCurrentPage >= totalPages);
+
+        attachWhitelistTableActions();
+    }
+
+    // SEARCH INPUT EVENT LISTENER WITH DEBOUNCE
+    if (whitelistSearchInput) {
+        whitelistSearchInput.addEventListener('input', (e) => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                whitelistSearchQuery = e.target.value.trim().toLowerCase();
+                whitelistCurrentPage = 1;
+                renderWhitelistTable();
+            }, 150);
+        });
+    }
+
+    // PAGINATION CONTROLS
+    if (btnWhitelistPrev) {
+        btnWhitelistPrev.addEventListener('click', () => {
+            if (whitelistCurrentPage > 1) {
+                whitelistCurrentPage--;
+                renderWhitelistTable();
+            }
+        });
+    }
+
+    if (btnWhitelistNext) {
+        btnWhitelistNext.addEventListener('click', () => {
+            const totalPages = Math.ceil(getFilteredWhitelistRecords().length / WHITELIST_PER_PAGE);
+            if (whitelistCurrentPage < totalPages) {
+                whitelistCurrentPage++;
+                renderWhitelistTable();
+            }
+        });
+    }
+
+    function attachWhitelistTableActions() {
+        whitelistTableBody.querySelectorAll('.btn-action-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = parseInt(e.target.getAttribute('data-id'));
+                const record = globalWhitelistRegistry.find(r => r.id === id);
+                
+                if (record) {
+                    whitelistIdInput.value = record.id;
+                    whitelistEmailInput.value = record.email;
+                    whitelistRoleSelect.value = record.role;
+                    whitelistStatusSelect.value = record.status;
+                    whitelistReferredByInput.value = record.referredBy;
+
+                    whitelistFormTitle.textContent = "Edit Whitelist Entry";
+                    btnSaveWhitelist.textContent = "Update Record";
+                    btnCancelWhitelist.classList.remove('hidden');
+                }
+            });
+        });
+
+        whitelistTableBody.querySelectorAll('.btn-action-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = parseInt(e.target.getAttribute('data-id'));
+                const record = globalWhitelistRegistry.find(r => r.id === id);
+
+                if (record && confirm(`Are you sure you want to delete "${record.email}" from tblwhitelist?`)) {
+                    globalWhitelistRegistry = globalWhitelistRegistry.filter(r => r.id !== id);
+                    renderWhitelistTable();
+                    resetWhitelistForm();
+                }
+            });
+        });
+    }
+
+    whitelistForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const id = whitelistIdInput.value ? parseInt(whitelistIdInput.value) : null;
+        const email = whitelistEmailInput.value.trim().toLowerCase();
+        const role = whitelistRoleSelect.value;
+        const status = whitelistStatusSelect.value;
+        const referredBy = whitelistReferredByInput.value.trim() || 'CALTIDES_DIRECT';
+
+        const { datecreated, timecreated } = getSystemDateTimeFormatted();
+
+        if (id) {
+            // EDIT / UPDATE EXISTING RECORD
+            const index = globalWhitelistRegistry.findIndex(r => r.id === id);
+            if (index !== -1) {
+                globalWhitelistRegistry[index].email = email;
+                globalWhitelistRegistry[index].role = role;
+                globalWhitelistRegistry[index].status = status;
+                globalWhitelistRegistry[index].referredBy = referredBy;
+            }
+        } else {
+            // CREATE NEW RECORD
+            const newId = globalWhitelistRegistry.length > 0 
+                ? Math.max(...globalWhitelistRegistry.map(r => r.id)) + 1 
+                : 1;
+
+            globalWhitelistRegistry.push({
+                id: newId,
+                email: email,
+                role: role,
+                status: status,
+                referredBy: referredBy,
+                datecreated: datecreated,
+                timecreated: timecreated
+            });
+        }
+
+        renderWhitelistTable();
+        resetWhitelistForm();
+    });
+
+    btnCancelWhitelist.addEventListener('click', resetWhitelistForm);
+
+    function resetWhitelistForm() {
+        whitelistForm.reset();
+        whitelistIdInput.value = '';
+        whitelistFormTitle.textContent = "Add Whitelist Entry";
+        btnSaveWhitelist.textContent = "Save Record";
+        btnCancelWhitelist.classList.add('hidden');
+        whitelistReferredByInput.value = 'CALTIDES_DIRECT';
+    }
 });

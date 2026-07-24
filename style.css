@@ -12,10 +12,10 @@ body {
     font-family: 'Inter', sans-serif;
     min-height: 100vh;
     display: flex;
-    flex-direction: column;    /* FIXED: Stacks elements cleanly vertically */
-    justify-content: flex-start; /* FIXED: Pulls all interfaces up to start at the top edge */
-    align-items: center;         /* Horizontally centers content columns */
-    padding: 60px 20px;          /* Clean top-to-bottom outer border breathing room */
+    flex-direction: column;    
+    justify-content: flex-start; 
+    align-items: center;         
+    padding: 60px 20px;          
 }
 
 .hidden { display: none !important; }
@@ -23,7 +23,7 @@ body {
 .mono-text { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
 
 /* Global Inputs & Buttons Styles */
-input {
+input, select.styled-select {
     background: #141820;
     border: 1px solid #2d3748;
     color: #fff;
@@ -33,7 +33,10 @@ input {
     outline: none;
     transition: all 0.2s ease;
 }
-input:focus {
+select.styled-select {
+    cursor: pointer;
+}
+input:focus, select.styled-select:focus {
     border-color: #00bcd4;
     box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.15);
 }
@@ -102,7 +105,7 @@ label {
     border-radius: 12px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     overflow: hidden;
-    margin-top: 40px; /* Centers the authentication window vertically relative to the screen start */
+    margin-top: 40px; 
 }
 
 .portal-header {
@@ -116,6 +119,7 @@ label {
 
 .status-indicator { width: 8px; height: 8px; border-radius: 50%; }
 .status-indicator.online { background: #10b981; box-shadow: 0 0 8px #10b981; }
+.status-indicator.offline { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
 .portal-title { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #64748b; font-weight: 500; }
 .portal-screen { padding: 32px 32px; }
 .portal-screen h2 { font-size: 1.5rem; font-weight: 500; margin-bottom: 8px; color: #fff; }
@@ -139,7 +143,7 @@ label {
     align-items: center;
     border-bottom: 1px solid #1e293b;
     padding-bottom: 20px;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
 }
 .main-header h1 { font-size: 1.75rem; color: #fff; font-weight: 500; }
 .header-subtitle { font-size: 0.9rem; color: #64748b; margin-top: 2px; }
@@ -197,7 +201,7 @@ label {
     align-items: start;
 }
 
-/* Products Column Frame Work and Image Handling */
+/* Products Column Framework */
 .products-column { display: flex; flex-direction: column; gap: 24px; }
 .product-card { background: #11151d; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; }
 .product-header { background: #161b26; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
@@ -297,7 +301,40 @@ label {
 .shipping-form { background: #11151d; border: 1px solid #1e293b; padding: 24px; border-radius: 8px; display: flex; flex-direction: column; gap: 20px; }
 .btn-group { display: grid; grid-template-columns: 140px 1fr; gap: 16px; margin-top: 10px; }
 
-/* ================= ADMINISTRATIVE FULL SCALE TERMINAL & GLOW BADGES ================= */
+/* ================= ADMIN NAVIGATION TABS ================= */
+.admin-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 12px;
+}
+
+.tab-btn {
+    background: #11151d;
+    border: 1px solid #1e293b;
+    color: #94a3b8;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+    color: #fff;
+    border-color: #334155;
+}
+
+.tab-btn.active {
+    background: rgba(0, 188, 212, 0.1);
+    color: #00bcd4;
+    border-color: #00bcd4;
+    font-weight: 600;
+}
+
+/* ================= ADMINISTRATIVE FULL SCALE TERMINAL & TABLES ================= */
 #adminDashboard {
     max-width: 100% !important;
     width: 100%;
@@ -308,7 +345,26 @@ label {
     grid-template-columns: 1fr 340px;
     gap: 20px;
     width: 100%;
-    align-items: start; /* Holds structural columns tightly at the absolute top edge */
+    align-items: start; 
+}
+
+.table-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.table-filter-bar input {
+    width: 100%;
+    background: #11151d;
+    border: 1px solid #1e293b;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    color: #e2e8f0;
+}
+.table-filter-bar input:focus {
+    border-color: #00bcd4;
 }
 
 .table-container {
@@ -318,13 +374,13 @@ label {
     overflow-x: auto;
 }
 
-#ordersTable {
+#ordersTable, #whitelistTable {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
     font-size: 0.9rem;
 }
-#ordersTable th {
+#ordersTable th, #whitelistTable th {
     background: #161b26;
     color: #94a3b8;
     font-size: 0.75rem;
@@ -333,22 +389,68 @@ label {
     padding: 16px;
     border-bottom: 1px solid #1e293b;
 }
-#ordersTable td {
+#ordersTable td, #whitelistTable td {
     padding: 16px;
     border-bottom: 1px solid #161b26;
     color: #e2e8f0;
-    vertical-align: top;  /* Anchors inner item texts up to top layout borders */
+    vertical-align: middle;  
 }
-#ordersTable tbody tr {
-    cursor: pointer;
+#ordersTable tbody tr, #whitelistTable tbody tr {
     transition: background 0.15s ease;
 }
-#ordersTable tbody tr:hover {
+#ordersTable tbody tr { cursor: pointer; }
+#ordersTable tbody tr:hover, #whitelistTable tbody tr:hover {
     background: #1a202c;
 }
 #ordersTable tbody tr.selected-row {
     background: rgba(0, 188, 212, 0.08);
     box-shadow: inset 3px 0 0 #00bcd4;
+}
+
+/* Pagination Bar Styles */
+.pagination-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #11151d;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-page {
+    background: #161b26;
+    border: 1px solid #2d3748;
+    color: #e2e8f0;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-page:hover:not(:disabled) {
+    border-color: #00bcd4;
+    color: #00bcd4;
+}
+
+.btn-page:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.page-num {
+    font-family: 'JetBrains Mono', monospace;
+    color: #00bcd4;
+    font-weight: 500;
 }
 
 /* Status Badges */
@@ -359,9 +461,33 @@ label {
     font-size: 0.75rem;
     font-weight: 600;
 }
-.pill-forpaymentconfirmation { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
-.pill-shipmentinprogress { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); }
-.pill-delivered { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+.pill-forpaymentconfirmation, .pill-inactive { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
+.pill-shipmentinprogress, .pill-admin { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); }
+.pill-delivered, .pill-active, .pill-customer { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+
+/* CRUD Action Buttons */
+.btn-action-edit {
+    background: transparent;
+    border: 1px solid #3b82f6;
+    color: #3b82f6;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    margin-right: 6px;
+}
+.btn-action-edit:hover { background: rgba(59, 130, 246, 0.1); }
+
+.btn-action-delete {
+    background: transparent;
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+.btn-action-delete:hover { background: rgba(239, 68, 68, 0.1); }
 
 /* Static Non-clickable Neon Order Alert Box */
 .badge-new-order {
