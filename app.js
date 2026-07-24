@@ -299,11 +299,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         printStatus("Validating email against whitelist database...");
 
-        generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-
         try {
             // Check maintenance configuration status
             const isOtpRequired = await checkIsEmailOTPEnabled();
+
+            // Generate OTP code only if enabled
+            generatedOtp = isOtpRequired 
+                ? Math.floor(100000 + Math.random() * 900000).toString() 
+                : null;
 
             const response = await fetch('/api/send-otp', {
                 method: 'POST',
@@ -324,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.sessionStorage.setItem('referredBy', result.referredBy || 'CALTIDES_DIRECT');
 
                 if (!isOtpRequired) {
-                    // Maintenance setting disabled OTP: Skip OTP step and log in directly
+                    // Maintenance setting disabled OTP: Skip OTP step and log in directly without sending email
                     printStatus("OTP bypassed (Maintenance Mode). Launching session...", true);
                     setTimeout(() => {
                         grantSessionAccess(rawEmailInput, userRole);

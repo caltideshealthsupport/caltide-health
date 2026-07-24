@@ -32,12 +32,17 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Endpoint: Validate Whitelist & Send OTP
+// Endpoint: Validate Whitelist & Send OTP (Skip email delivery if isOtpRequired is false)
 app.post('/api/send-otp', async (req, res) => {
-  const { email, otp } = req.body;
+  const { email, otp, isOtpRequired = true } = req.body;
 
-  if (!email || !otp) {
-    return res.status(400).json({ success: false, message: 'Email and OTP are required.' });
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Email address is required.' });
+  }
+
+  // Validate that OTP was supplied if OTP enforcement is active
+  if (isOtpRequired && !otp) {
+    return res.status(400).json({ success: false, message: 'OTP is required when verification is enabled.' });
   }
 
   const cleanEmail = email.trim().toLowerCase();
@@ -68,35 +73,39 @@ app.post('/api/send-otp', async (req, res) => {
       });
     }
 
-    // 3. Send OTP via Resend
-    try {
-      await resend.emails.send({
-        from: 'Caltide Health <no-reply@caltideshealth.online>',
-        to: [cleanEmail],
-        subject: 'Your Caltide Health Login OTP',
-        html: `
-          <div style="font-family: sans-serif; padding: 20px;">
-            <h2>Caltide Health Verification Code</h2>
-            <p>Your OTP code to sign in is:</p>
-            <h1 style="color: #2563eb; letter-spacing: 4px;">${otp}</h1>
-            <p>Role: <strong>${userRole}</strong></p>
-            <p>This code expires shortly. If you did not request this, please ignore this email.</p>
-          </div>
-        `
-      });
-    } catch (emailError) {
-      console.error('Resend API Error:', emailError);
-      return res.status(500).json({
-        success: false,
-        message: `Email delivery failed: ${emailError.message}`
-      });
+    // 3. Send OTP via Resend ONLY IF isOtpRequired is true
+    if (isOtpRequired) {
+      try {
+        await resend.emails.send({
+          from: 'Caltide Health <no-reply@caltideshealth.online>',
+          to: [cleanEmail],
+          subject: 'Your Caltide Health Login OTP',
+          html: `
+            <div style="font-family: sans-serif; padding: 20px;">
+              <h2>Caltide Health Verification Code</h2>
+              <p>Your OTP code to sign in is:</p>
+              <h1 style="color: #2563eb; letter-spacing: 4px;">${otp}</h1>
+              <p>Role: <strong>${userRole}</strong></p>
+              <p>This code expires shortly. If you did not request this, please ignore this email.</p>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        console.error('Resend API Error:', emailError);
+        return res.status(500).json({
+          success: false,
+          message: `Email delivery failed: ${emailError.message}`
+        });
+      }
     }
 
     return res.status(200).json({
       success: true,
       role: userRole,
       referredBy: userReferredBy,
-      message: 'OTP Token sent to email destination successfully!'
+      message: isOtpRequired 
+        ? 'OTP Token sent to email destination successfully!' 
+        : 'Authentication authorized. OTP step bypassed via maintenance configuration.'
     });
 
   } catch (dbError) {
@@ -117,7 +126,6 @@ app.get('/api/whitelist', async (req, res) => {
   try {
     const [rows] = await db.execute('SELECT * FROM tblwhitelist ORDER BY id DESC');
 
-    // Normalize DB column names to match front-end expectations
     const normalizedData = rows.map((item) => ({
       id: item.ID || item.id,
       email: item.EMAIL || item.email,
@@ -204,7 +212,6 @@ app.get('/api/maintenance/isEmailOTPEnabled', async (req, res) => {
     }
     return res.status(200).json({ value: 'YES' });
   } catch (error) {
-    // Return default fallback if tblmaintenance is not set up yet
     return res.status(200).json({ value: 'YES' });
   }
 });
