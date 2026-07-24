@@ -5,27 +5,13 @@ document.addEventListener('DOMContentLoaded', () => {
         tb500: 3    
     };
 
-    // AUTHORIZED WHITELIST MAP
-    const CUSTOMER_WHITELIST = [
-        "jeremie.francis@gmail.com"
-    ];
-
-    const ADMIN_WHITELIST = [
-        "caltideshealth@gmail.com",
-        "caltideshealthsupport@gmail.com"
-    ];
-
-    const REFERRAL_NETWORK_DIRECTORY = {
-        "jeremie.francis@gmail.com": "REFERRED_BY: CALTIDES_DIRECT"
-    };
-
     let globalOrdersRegistry = [
         {
             id: 1,
             date: "2026-07-20 14:22",
             name: "John Doe",
             address: "123 Pharma Way, Suite 400",
-            referral: "NO_ACTIVE_REFERRAL_MAPPING",
+            referral: "REFERRED_BY: CALTIDES_DIRECT",
             zelleRef: "ZEL8741094",
             status: "For Payment Confirmation",
             isNew: true
@@ -35,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             date: "2026-07-20 16:05",
             name: "Jane Smith",
             address: "742 Evergreen Terrace",
-            referral: "REFERRED_BY: 09154781489",
+            referral: "REFERRED_BY: CALTIDES_DIRECT",
             zelleRef: "ZEL9921455",
             status: "Shipment In-Progress",
             isNew: false
@@ -52,6 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let sessionTimeRemaining = SESSION_DURATION;
 
     // SELECTORS
+    const dbStatusDot = document.getElementById('dbStatusDot');
+    const dbStatusText = document.getElementById('dbStatusText');
+    
     const authContainer = document.getElementById('authContainer');
     const marketplace = document.getElementById('marketplace');
     const checkoutPage = document.getElementById('checkoutPage');
@@ -118,27 +107,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Function to trigger sending OTP through Resend Endpoint
-    async function sendEmailOtp(recipientEmail, otpCode) {
+    // ================= LIVE DATABASE HEALTH CHECK =================
+    async function checkDatabaseHealth() {
         try {
-            printStatus("Dispatching Email OTP via Resend...", true);
-            const response = await fetch('/api/send-otp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: recipientEmail, otp: otpCode })
-            });
+            const response = await fetch('/api/health');
+            const data = await response.json();
 
-            if (response.ok) {
-                printStatus("OTP Token sent to email destination successfully!");
+            if (response.ok && data.status === 'online') {
+                if (dbStatusDot) dbStatusDot.className = 'status-indicator online';
+                if (dbStatusText) dbStatusText.textContent = 'DATABASE ONLINE // CALTIDES SECURE PORTAL';
             } else {
-                printStatus("Simulated OTP generated (Check console/backend).", true);
-                console.log(`[DEVELOPMENT RESEND OTP]: ${otpCode}`);
+                if (dbStatusDot) dbStatusDot.className = 'status-indicator offline';
+                if (dbStatusText) dbStatusText.textContent = 'DATABASE OFFLINE // SERVICE DEGRADED';
             }
         } catch (err) {
-            printStatus(`OTP Generated: ${otpCode} (Backend offline, logged to dev log)`, true);
-            console.log(`[DEVELOPMENT RESEND OTP CODE]: ${otpCode}`);
+            if (dbStatusDot) dbStatusDot.className = 'status-indicator offline';
+            if (dbStatusText) dbStatusText.textContent = 'DATABASE UNREACHABLE';
         }
     }
+
+    // Run health check on startup and every 30s
+    checkDatabaseHealth();
+    setInterval(checkDatabaseHealth, 30000);
 
     // ================= SECURITY LIFECYCLE MANAGERS =================
     function startSessionCountdown() {
@@ -193,84 +183,75 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ================= SECURITY GATEWAY HANDLERS =================
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const rawEmailInput = emailAddressInput.value.trim().toLowerCase();
 
-        printStatus("Evaluating email security whitelist records...");
+        printStatus("Validating email against whitelist database...");
 
-        setTimeout(() => {
-            // Handle special test accounts - bypass OTP completely
-            const isSpecialCustomer = rawEmailInput === "customer@gmail.com";
+        // Handle special test accounts - bypass OTP verification
+        if (rawEmailInput === "customer@gmail.com" || rawEmailInput === "admin@gmail.com") {
             const isSpecialAdmin = rawEmailInput === "admin@gmail.com";
+            const role = isSpecialAdmin ? 'ADMIN' : 'CUSTOMER';
 
-            // SPECIAL CUSTOMER LOGIN - Skip OTP, go directly to marketplace
-            if (isSpecialCustomer) {
-                printStatus("Test customer login detected - bypassing OTP verification...", true);
-                
-                window.sessionStorage.setItem('authenticatedUserEmail', 'customer@gmail.com');
-                window.sessionStorage.setItem('userRole', 'CUSTOMER');
-                
-                // Skip OTP and go directly to marketplace
-                loginForm.classList.add('hidden');
-                otpForm.classList.add('hidden');
-                authContainer.classList.add('hidden');
-                document.querySelectorAll('.app-session-bar').forEach(el => el.style.display = 'flex');
-                
-                badgeContainersArray.forEach(badgeDiv => {
-                    badgeDiv.textContent = `Client Session Secured User: customer@gmail.com [TEST MODE]`;
-                });
-                
-                startSessionCountdown();
-                marketplace.classList.remove('hidden');
-                printStatus("Test customer session activated - OTP bypassed successfully!", true);
-                return;
-            }
+            printStatus(`Test ${role.toLowerCase()} login detected - bypassing OTP verification...`, true);
 
-            // SPECIAL ADMIN LOGIN - Skip OTP, go directly to admin dashboard
+            window.sessionStorage.setItem('authenticatedUserEmail', rawEmailInput);
+            window.sessionStorage.setItem('userRole', role);
+            window.sessionStorage.setItem('referredBy', 'CALTIDES_DIRECT');
+
+            loginForm.classList.add('hidden');
+            otpForm.classList.add('hidden');
+            authContainer.classList.add('hidden');
+            document.querySelectorAll('.app-session-bar').forEach(el => el.style.display = 'flex');
+
+            badgeContainersArray.forEach(badgeDiv => {
+                badgeDiv.textContent = `${role === 'ADMIN' ? 'Admin' : 'Client'} Session Secured User: ${rawEmailInput} [TEST MODE]`;
+            });
+
+            startSessionCountdown();
+
             if (isSpecialAdmin) {
-                printStatus("Test admin login detected - bypassing OTP verification...", true);
-                
-                window.sessionStorage.setItem('authenticatedUserEmail', 'admin@gmail.com');
-                window.sessionStorage.setItem('userRole', 'ADMIN');
-                
-                // Skip OTP and go directly to admin dashboard
-                loginForm.classList.add('hidden');
-                otpForm.classList.add('hidden');
-                authContainer.classList.add('hidden');
-                document.querySelectorAll('.app-session-bar').forEach(el => el.style.display = 'flex');
-                
-                badgeContainersArray.forEach(badgeDiv => {
-                    badgeDiv.textContent = `Admin Session Secured User: admin@gmail.com [TEST MODE]`;
-                });
-                
-                startSessionCountdown();
                 adminDashboard.classList.remove('hidden');
                 renderAdminOrdersTable();
-                printStatus("Test admin session activated - OTP bypassed successfully!", true);
-                return;
+            } else {
+                marketplace.classList.remove('hidden');
             }
 
-            // Regular user flow (existing logic for whitelisted emails)
-            const isCustomer = CUSTOMER_WHITELIST.includes(rawEmailInput);
-            const isAdmin = ADMIN_WHITELIST.includes(rawEmailInput);
+            printStatus(`Test ${role.toLowerCase()} session activated - OTP bypassed successfully!`, true);
+            return;
+        }
 
-            if (isCustomer || isAdmin) {
-                // Generate 6-digit verification code
-                generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        // Standard User Flow: Generate OTP and validate with Backend & Aiven MySQL
+        generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
+        try {
+            const response = await fetch('/api/send-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: rawEmailInput, otp: generatedOtp })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
                 window.sessionStorage.setItem('authenticatedUserEmail', rawEmailInput);
-                window.sessionStorage.setItem('userRole', isAdmin ? 'ADMIN' : 'CUSTOMER');
+                window.sessionStorage.setItem('userRole', result.role || 'CUSTOMER');
+                // Store database REFERRED_BY value in session (defaults to CALTIDES_DIRECT if null)
+                window.sessionStorage.setItem('referredBy', result.referredBy || 'CALTIDES_DIRECT');
 
-                sendEmailOtp(rawEmailInput, generatedOtp);
+                printStatus(result.message, true);
 
                 loginForm.classList.add('hidden');
                 otpForm.classList.remove('hidden');
                 otpCodeInput.focus();
             } else {
-                printStatus("Access Denied: Email address is unregistered in system logs.", false);
+                // Displays backend response (e.g., Access Denied or Inactive status)
+                printStatus(result.message || 'Validation failed.', false);
             }
-        }, 800);
+        } catch (err) {
+            printStatus("Network error: Unable to connect to verification server.", false);
+        }
     });
 
     otpForm.addEventListener('submit', (e) => {
@@ -311,11 +292,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
     });
 
-    resendBtn.addEventListener('click', () => {
+    resendBtn.addEventListener('click', async () => {
         const savedEmail = window.sessionStorage.getItem('authenticatedUserEmail');
-        if (savedEmail && !savedEmail.includes('@test')) {
+        if (savedEmail && !savedEmail.includes('@gmail.com')) {
             generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-            sendEmailOtp(savedEmail, generatedOtp);
+            
+            try {
+                const response = await fetch('/api/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: savedEmail, otp: generatedOtp })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    printStatus("New OTP Code sent to email successfully!", true);
+                } else {
+                    printStatus(result.message || "Failed to resend OTP.", false);
+                }
+            } catch (err) {
+                printStatus("Error sending OTP code.", false);
+            }
         } else {
             printStatus("Resend not available for test accounts.", false);
         }
@@ -437,17 +433,14 @@ document.addEventListener('DOMContentLoaded', () => {
         checkoutGrandTotal.textContent = `$${checkoutTotalSum.toFixed(2)}`;
 
         const savedUserEmail = window.sessionStorage.getItem('authenticatedUserEmail') || 'Unknown Email';
+        const dbReferredBy = window.sessionStorage.getItem('referredBy') || 'CALTIDES_DIRECT';
 
         if (zelleUserEmailDisplay) {
             zelleUserEmailDisplay.textContent = savedUserEmail;
         }
 
         if (referralCodeField) {
-            if (REFERRAL_NETWORK_DIRECTORY[savedUserEmail]) {
-                referralCodeField.value = REFERRAL_NETWORK_DIRECTORY[savedUserEmail];
-            } else {
-                referralCodeField.value = "NO_ACTIVE_REFERRAL_MAPPING";
-            }
+            referralCodeField.value = `REFERRED_BY: ${dbReferredBy}`;
         }
 
         marketplace.classList.add('hidden');
