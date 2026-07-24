@@ -45,6 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let shoppingCart = {};
     let selectedAdminOrderId = null;
     let generatedOtp = null; // Generated OTP reference
+    let isSpecialCustomerLogin = false; // Flag for special "customer" login
+    let isSpecialAdminLogin = false; // Flag for special "admin" login
     
     // SECURITY AUTO-LOGOUT CONFIGURATION
     let sessionTimeoutInterval = null;
@@ -190,6 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
         otpForm.classList.add('hidden');
         loginForm.classList.remove('hidden');
         authContainer.classList.remove('hidden');
+        
+        // Reset special login flags
+        isSpecialCustomerLogin = false;
+        isSpecialAdminLogin = false;
     }
 
     // ================= SECURITY GATEWAY HANDLERS =================
@@ -199,7 +205,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
         printStatus("Evaluating email security whitelist records...");
 
+        // Check for special "customer" and "admin" email inputs
+        const isSpecialCustomer = rawEmailInput === "customer";
+        const isSpecialAdmin = rawEmailInput === "admin";
+
         setTimeout(() => {
+            // Handle special "customer" login - skip OTP, go directly to marketplace
+            if (isSpecialCustomer) {
+                printStatus("Special customer login detected - bypassing OTP verification...", true);
+                
+                isSpecialCustomerLogin = true;
+                window.sessionStorage.setItem('authenticatedUserEmail', 'customer@special.access');
+                window.sessionStorage.setItem('userRole', 'CUSTOMER');
+                
+                // Skip OTP and go directly to marketplace
+                loginForm.classList.add('hidden');
+                otpForm.classList.add('hidden');
+                authContainer.classList.add('hidden');
+                document.querySelectorAll('.app-session-bar').forEach(el => el.style.display = 'flex');
+                
+                badgeContainersArray.forEach(badgeDiv => {
+                    badgeDiv.textContent = `Client Session Secured User: customer@special.access`;
+                });
+                
+                startSessionCountdown();
+                marketplace.classList.remove('hidden');
+                printStatus("Special customer session activated - OTP bypassed successfully!", true);
+                return;
+            }
+
+            // Handle special "admin" login - skip to OTP then enter admin view
+            if (isSpecialAdmin) {
+                printStatus("Special admin login detected - bypassing email verification...", true);
+                
+                isSpecialAdminLogin = true;
+                window.sessionStorage.setItem('authenticatedUserEmail', 'admin@special.access');
+                window.sessionStorage.setItem('userRole', 'ADMIN');
+                
+                // Skip to OTP form with auto-generated code
+                loginForm.classList.add('hidden');
+                otpForm.classList.remove('hidden');
+                generatedOtp = "999999"; // Special admin OTP
+                otpCodeInput.value = generatedOtp;
+                printStatus("Admin OTP auto-generated. Please click 'Verify OTP' to proceed.", true);
+                return;
+            }
+
+            // Regular user flow (existing logic)
             const isCustomer = CUSTOMER_WHITELIST.includes(rawEmailInput);
             const isAdmin = ADMIN_WHITELIST.includes(rawEmailInput);
 
@@ -228,6 +280,28 @@ document.addEventListener('DOMContentLoaded', () => {
         printStatus("Validating security keys...");
 
         setTimeout(() => {
+            // Check for special admin bypass
+            if (isSpecialAdminLogin && inputOtp === "999999") {
+                printStatus("Special admin verification successful. Opening admin portal...", true);
+                
+                const activeEmail = window.sessionStorage.getItem('authenticatedUserEmail') || 'Admin Identity';
+                
+                badgeContainersArray.forEach(badgeDiv => {
+                    badgeDiv.textContent = `Admin Session Secured User: ${activeEmail}`;
+                });
+                
+                setTimeout(() => {
+                    authContainer.classList.add('hidden');
+                    document.querySelectorAll('.app-session-bar').forEach(el => el.style.display = 'flex');
+                    startSessionCountdown();
+                    adminDashboard.classList.remove('hidden');
+                    renderAdminOrdersTable();
+                    printStatus("Admin dashboard activated - special access granted!", true);
+                }, 800);
+                return;
+            }
+
+            // Regular OTP validation
             if (inputOtp === generatedOtp || inputOtp === "123456") { 
                 printStatus("Session verified successfully. Opening registry portal...", true);
                 
@@ -261,9 +335,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resendBtn.addEventListener('click', () => {
         const savedEmail = window.sessionStorage.getItem('authenticatedUserEmail');
-        if (savedEmail) {
+        if (savedEmail && !isSpecialCustomerLogin && !isSpecialAdminLogin) {
             generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
             sendEmailOtp(savedEmail, generatedOtp);
+        } else if (isSpecialAdminLogin) {
+            generatedOtp = "999999";
+            otpCodeInput.value = generatedOtp;
+            printStatus("Admin OTP regenerated. Please verify to proceed.", true);
+        } else {
+            printStatus("Resend not available for special sessions.", false);
         }
     });
 
