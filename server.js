@@ -108,6 +108,107 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
+// =========================================================================
+// WHITELIST MANAGEMENT ENDPOINTS
+// =========================================================================
+
+// 1. GET: Fetch all records from tblwhitelist
+app.get('/api/whitelist', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT * FROM tblwhitelist ORDER BY id DESC');
+
+    // Normalize DB column names to match front-end expectations
+    const normalizedData = rows.map((item) => ({
+      id: item.ID || item.id,
+      email: item.EMAIL || item.email,
+      role: item.ROLE || item.role,
+      status: item.STATUS || item.status,
+      referredBy: item.REFERREDBY || item.referredby || item.REFERRED_BY || item.referredBy || 'CALTIDES_DIRECT',
+      datecreated: item.DATECREATED || item.datecreated || '',
+      timecreated: item.TIMECREATED || item.timecreated || ''
+    }));
+
+    return res.status(200).json(normalizedData);
+  } catch (error) {
+    console.error('Error fetching whitelist:', error);
+    return res.status(500).json({ error: 'Failed to retrieve whitelist records.' });
+  }
+});
+
+// 2. POST: Add a new whitelist entry
+app.post('/api/whitelist', async (req, res) => {
+  const { email, role, status, referredBy, datecreated, timecreated } = req.body;
+
+  try {
+    const [result] = await db.execute(
+      `INSERT INTO tblwhitelist (EMAIL, ROLE, STATUS, REFERREDBY, DATECREATED, TIMECREATED) VALUES (?, ?, ?, ?, ?, ?)`,
+      [email, role, status, referredBy, datecreated, timecreated]
+    );
+
+    return res.status(201).json({
+      id: result.insertId,
+      email,
+      role,
+      status,
+      referredBy,
+      datecreated,
+      timecreated
+    });
+  } catch (error) {
+    console.error('Error creating whitelist entry:', error);
+    return res.status(500).json({ error: 'Failed to insert whitelist record.' });
+  }
+});
+
+// 3. PUT: Update an existing whitelist entry
+app.put('/api/whitelist/:id', async (req, res) => {
+  const { id } = req.params;
+  const { email, role, status, referredBy } = req.body;
+
+  try {
+    await db.execute(
+      `UPDATE tblwhitelist SET EMAIL = ?, ROLE = ?, STATUS = ?, REFERREDBY = ? WHERE ID = ?`,
+      [email, role, status, referredBy, id]
+    );
+
+    return res.status(200).json({ success: true, message: 'Record updated successfully.' });
+  } catch (error) {
+    console.error('Error updating whitelist entry:', error);
+    return res.status(500).json({ error: 'Failed to update whitelist record.' });
+  }
+});
+
+// 4. DELETE: Remove a whitelist entry
+app.delete('/api/whitelist/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await db.execute('DELETE FROM tblwhitelist WHERE ID = ?', [id]);
+    return res.status(200).json({ success: true, message: 'Record deleted successfully.' });
+  } catch (error) {
+    console.error('Error deleting whitelist entry:', error);
+    return res.status(500).json({ error: 'Failed to delete whitelist record.' });
+  }
+});
+
+// =========================================================================
+// SYSTEM MAINTENANCE ENDPOINTS
+// =========================================================================
+
+// GET: Check if Email OTP is globally enabled
+app.get('/api/maintenance/isEmailOTPEnabled', async (req, res) => {
+  try {
+    const [rows] = await db.execute("SELECT VALUE FROM tblmaintenance WHERE SETTING = 'EMAIL_OTP'");
+    if (rows.length > 0) {
+      return res.status(200).json({ value: rows[0].VALUE || rows[0].value });
+    }
+    return res.status(200).json({ value: 'YES' });
+  } catch (error) {
+    // Return default fallback if tblmaintenance is not set up yet
+    return res.status(200).json({ value: 'YES' });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Backend server running on port ${port}`);
 });
